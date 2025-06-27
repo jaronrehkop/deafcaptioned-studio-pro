@@ -13,8 +13,8 @@ interface CaptionTrack {
   captions: Array<{
     id: string;
     text: string;
-    startTime: string;
-    endTime: string;
+    startTime: number; // Changed to number (seconds)
+    endTime: number;   // Changed to number (seconds)
   }>;
 }
 
@@ -45,8 +45,8 @@ export const CaptionSettings = () => {
       const newCaption = {
         id: Date.now().toString(),
         text: captionText.trim(),
-        startTime: '00:00:00',
-        endTime: '00:00:03'
+        startTime: 0, // Will be set by timeline
+        endTime: 3    // Default 3 seconds
       };
       
       setActiveTrack({
@@ -63,8 +63,8 @@ export const CaptionSettings = () => {
       id: 'mock-track',
       name: 'English Captions',
       captions: [
-        { id: '1', text: 'Welcome to our platform demonstration.', startTime: '00:00:05', endTime: '00:00:08' },
-        { id: '2', text: 'This system provides professional captioning tools.', startTime: '00:00:08', endTime: '00:00:12' }
+        { id: '1', text: 'Welcome to our platform demonstration.', startTime: 5, endTime: 8 },
+        { id: '2', text: 'This system provides professional captioning tools.', startTime: 8, endTime: 12 }
       ]
     };
     setActiveTrack(mockTrack);
@@ -76,8 +76,8 @@ export const CaptionSettings = () => {
       const newCaptions = lines.map((line, index) => ({
         id: `script-${Date.now()}-${index}`,
         text: line.trim(),
-        startTime: `00:00:${String(index * 3).padStart(2, '0')}`,
-        endTime: `00:00:${String((index + 1) * 3).padStart(2, '0')}`
+        startTime: index * 3,
+        endTime: (index + 1) * 3
       }));
       
       setActiveTrack({
@@ -86,6 +86,12 @@ export const CaptionSettings = () => {
       });
       setScriptText('');
     }
+  };
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
   if (!activeTrack) {
@@ -202,7 +208,7 @@ export const CaptionSettings = () => {
             <Checkbox
               id="speaker-tags"
               checked={showSpeakerTags}
-              onCheckedChange={setShowSpeakerTags}
+              onCheckedChange={(checked) => setShowSpeakerTags(checked as boolean)}
             />
             <Label htmlFor="speaker-tags" className="text-slate-300 text-sm">
               Show speaker tags
@@ -212,7 +218,7 @@ export const CaptionSettings = () => {
             <Checkbox
               id="emotional-tones"
               checked={showEmotionalTones}
-              onCheckedChange={setShowEmotionalTones}
+              onCheckedChange={(checked) => setShowEmotionalTones(checked as boolean)}
             />
             <Label htmlFor="emotional-tones" className="text-slate-300 text-sm">
               Show emotional tones
@@ -229,7 +235,7 @@ export const CaptionSettings = () => {
             {activeTrack.captions.map((caption) => (
               <div key={caption.id} className="bg-slate-700/30 rounded p-2 text-sm">
                 <div className="text-slate-400 text-xs mb-1">
-                  {caption.startTime} - {caption.endTime}
+                  {formatTime(caption.startTime)} - {formatTime(caption.endTime)}
                 </div>
                 <div className="text-white">{caption.text}</div>
               </div>
