@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { WorkspacePanel } from '../WorkspacePanel';
-import { VideoIcon, ClipboardIcon, MessageSquareIcon, ListIcon, AccessibilityIcon } from 'lucide-react';
+import { VideoIcon, ClipboardIcon, MessageSquareIcon, ListIcon, SettingsIcon } from 'lucide-react';
+import { CaptionSettings } from '../CaptionSettings';
 
 export const EditorDashboard = () => {
   const panels = [
@@ -69,31 +70,10 @@ Speaker 1: Let me show you..."
       )
     },
     {
-      id: 'ai-tools',
-      title: 'AI Assistant',
-      icon: AccessibilityIcon,
-      content: (
-        <div className="space-y-4">
-          <button className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 px-4 rounded-lg hover:shadow-lg transition-all">
-            🎯 Auto Tag Speakers
-          </button>
-          <button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-lg hover:shadow-lg transition-all">
-            🎵 Detect Music & Lyrics
-          </button>
-          <button className="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white py-3 px-4 rounded-lg hover:shadow-lg transition-all">
-            🌊 Add Sound Descriptions
-          </button>
-          <button className="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 px-4 rounded-lg hover:shadow-lg transition-all">
-            ♿ WCAG Accessibility Scan
-          </button>
-          <div className="bg-slate-700/30 rounded-lg p-4 mt-4">
-            <h4 className="text-white font-semibold mb-2">AI Suggestions</h4>
-            <p className="text-sm text-slate-300">• Consider adding emotional tone indicators</p>
-            <p className="text-sm text-slate-300">• Background music detected at 00:12</p>
-            <p className="text-sm text-slate-300">• Speaker transition could be clearer</p>
-          </div>
-        </div>
-      )
+      id: 'caption-settings',
+      title: 'Caption Settings',
+      icon: SettingsIcon,
+      content: <CaptionSettings />
     },
     {
       id: 'comments',
