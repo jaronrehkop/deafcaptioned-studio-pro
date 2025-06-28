@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -7,18 +6,30 @@ import { Textarea } from './ui/textarea';
 import { Checkbox } from './ui/checkbox';
 import { Plus, FolderOpen, FileText } from 'lucide-react';
 
+interface Caption {
+  id: string;
+  text: string;
+  startTime: number;
+  endTime: number;
+}
+
 interface CaptionTrack {
   id: string;
   name: string;
-  captions: Array<{
-    id: string;
-    text: string;
-    startTime: number; // Changed to number (seconds)
-    endTime: number;   // Changed to number (seconds)
-  }>;
+  captions: Caption[];
 }
 
-export const CaptionSettings = () => {
+interface CaptionSettingsProps {
+  onCaptionsChange?: (captions: Caption[]) => void;
+  onTrackNameChange?: (name: string) => void;
+  currentTime?: number;
+}
+
+export const CaptionSettings = ({ 
+  onCaptionsChange, 
+  onTrackNameChange, 
+  currentTime = 0 
+}: CaptionSettingsProps) => {
   const [activeTrack, setActiveTrack] = useState<CaptionTrack | null>(null);
   const [trackName, setTrackName] = useState('');
   const [isCreatingTrack, setIsCreatingTrack] = useState(false);
@@ -26,6 +37,20 @@ export const CaptionSettings = () => {
   const [showSpeakerTags, setShowSpeakerTags] = useState(true);
   const [showEmotionalTones, setShowEmotionalTones] = useState(false);
   const [scriptText, setScriptText] = useState('');
+
+  // Sync captions with parent component
+  useEffect(() => {
+    if (activeTrack && onCaptionsChange) {
+      onCaptionsChange(activeTrack.captions);
+    }
+  }, [activeTrack, onCaptionsChange]);
+
+  // Sync track name with parent component
+  useEffect(() => {
+    if (activeTrack && onTrackNameChange) {
+      onTrackNameChange(activeTrack.name);
+    }
+  }, [activeTrack, onTrackNameChange]);
 
   const handleCreateTrack = () => {
     if (trackName.trim()) {
@@ -40,19 +65,44 @@ export const CaptionSettings = () => {
     }
   };
 
+  const findNextAvailableTime = (captions: Caption[], preferredStart: number, duration: number = 3): number => {
+    // Sort captions by start time
+    const sorted = [...captions].sort((a, b) => a.startTime - b.startTime);
+    
+    // Try to place at preferred time first
+    let proposedStart = preferredStart;
+    let proposedEnd = proposedStart + duration;
+    
+    // Check for overlaps and find next available slot
+    for (const caption of sorted) {
+      if (proposedStart < caption.endTime && proposedEnd > caption.startTime) {
+        // Overlap detected, move to after this caption
+        proposedStart = caption.endTime;
+        proposedEnd = proposedStart + duration;
+      }
+    }
+    
+    return proposedStart;
+  };
+
   const handleAddCaption = () => {
     if (captionText.trim() && activeTrack) {
-      const newCaption = {
+      const duration = 3; // Default 3 seconds
+      const startTime = findNextAvailableTime(activeTrack.captions, currentTime, duration);
+      
+      const newCaption: Caption = {
         id: Date.now().toString(),
         text: captionText.trim(),
-        startTime: 0, // Will be set by timeline
-        endTime: 3    // Default 3 seconds
+        startTime: startTime,
+        endTime: startTime + duration
       };
       
-      setActiveTrack({
+      const updatedTrack = {
         ...activeTrack,
         captions: [...activeTrack.captions, newCaption]
-      });
+      };
+      
+      setActiveTrack(updatedTrack);
       setCaptionText('');
     }
   };
@@ -73,17 +123,27 @@ export const CaptionSettings = () => {
   const handleImportScript = () => {
     if (scriptText.trim() && activeTrack) {
       const lines = scriptText.split('\n').filter(line => line.trim());
-      const newCaptions = lines.map((line, index) => ({
-        id: `script-${Date.now()}-${index}`,
-        text: line.trim(),
-        startTime: index * 3,
-        endTime: (index + 1) * 3
-      }));
+      let currentStartTime = currentTime;
       
-      setActiveTrack({
+      const newCaptions = lines.map((line, index) => {
+        const duration = 3;
+        const startTime = findNextAvailableTime(activeTrack.captions, currentStartTime, duration);
+        currentStartTime = startTime + duration;
+        
+        return {
+          id: `script-${Date.now()}-${index}`,
+          text: line.trim(),
+          startTime: startTime,
+          endTime: startTime + duration
+        };
+      });
+      
+      const updatedTrack = {
         ...activeTrack,
         captions: [...activeTrack.captions, ...newCaptions]
-      });
+      };
+      
+      setActiveTrack(updatedTrack);
       setScriptText('');
     }
   };

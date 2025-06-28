@@ -39,6 +39,14 @@ export const EditorDashboard = () => {
     );
   };
 
+  const handleCaptionsChange = (newCaptions: Caption[]) => {
+    setCaptions(newCaptions);
+  };
+
+  const handleTrackNameChange = (name: string) => {
+    setActiveTrackName(name);
+  };
+
   const panels = [
     {
       id: 'video-player',
@@ -97,7 +105,13 @@ Speaker 1: Let me show you..."
       id: 'caption-settings',
       title: 'Caption Settings',
       icon: SettingsIcon,
-      content: <CaptionSettings />
+      content: (
+        <CaptionSettings 
+          onCaptionsChange={handleCaptionsChange}
+          onTrackNameChange={handleTrackNameChange}
+          currentTime={currentTime}
+        />
+      )
     },
     {
       id: 'comments',
