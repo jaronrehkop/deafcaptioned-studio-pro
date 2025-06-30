@@ -31,12 +31,9 @@ export const Timeline = ({
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartTime, setDragStartTime] = useState(0);
   const [resizeTooltip, setResizeTooltip] = useState<{ show: boolean; duration: number; x: number } | null>(null);
-  const [editingCaption, setEditingCaption] = useState<string | null>(null);
-  const [editText, setEditText] = useState('');
   const [isDraggingScrubber, setIsDraggingScrubber] = useState(false);
   const [scrubberTooltip, setScrubberTooltip] = useState<{ show: boolean; time: number; x: number } | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
-  const editInputRef = useRef<HTMLInputElement>(null);
   const PIXELS_PER_SECOND = 50;
   const timelineWidth = duration * PIXELS_PER_SECOND;
 
@@ -59,16 +56,8 @@ export const Timeline = ({
     return Math.round(time);
   };
 
-  // Focus input when editing starts
-  useEffect(() => {
-    if (editingCaption && editInputRef.current) {
-      editInputRef.current.focus();
-      editInputRef.current.select();
-    }
-  }, [editingCaption]);
-
   const handleTimelineClick = (event: React.MouseEvent) => {
-    if (!timelineRef.current || draggedCaption || editingCaption) return;
+    if (!timelineRef.current || draggedCaption) return;
     
     const rect = timelineRef.current.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
@@ -93,7 +82,6 @@ export const Timeline = ({
 
   const handleCaptionMouseDown = (captionId: string, event: React.MouseEvent, type: 'move' | 'resize-start' | 'resize-end') => {
     event.stopPropagation();
-    if (editingCaption) return; // Don't drag while editing
     
     setDraggedCaption(captionId);
     setDragType(type);
@@ -104,42 +92,6 @@ export const Timeline = ({
     if (caption) {
       setDragStartTime(type === 'resize-end' ? caption.endTime : caption.startTime);
     }
-  };
-
-  const handleCaptionDoubleClick = (captionId: string, event: React.MouseEvent) => {
-    event.stopPropagation();
-    const caption = captions.find(c => c.id === captionId);
-    if (caption && !isDragging) {
-      setEditingCaption(captionId);
-      setEditText(caption.text);
-    }
-  };
-
-  const handleEditKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === 'Enter') {
-      handleSaveEdit();
-    } else if (event.key === 'Escape') {
-      handleCancelEdit();
-    }
-  };
-
-  const handleSaveEdit = () => {
-    if (editingCaption && editText.trim()) {
-      const caption = captions.find(c => c.id === editingCaption);
-      if (caption) {
-        onCaptionUpdate({
-          ...caption,
-          text: editText.trim()
-        });
-      }
-    }
-    setEditingCaption(null);
-    setEditText('');
-  };
-
-  const handleCancelEdit = () => {
-    setEditingCaption(null);
-    setEditText('');
   };
 
   const handleMouseMove = (event: React.MouseEvent) => {
@@ -197,19 +149,28 @@ export const Timeline = ({
     } else if (dragType === 'resize-start') {
       const rawNewStartTime = dragStartTime + deltaTime;
       newStartTime = snapToSecond(Math.max(0, Math.min(caption.endTime - 1, rawNewStartTime)));
+      
       onCaptionUpdate({
         ...caption,
         startTime: newStartTime
       });
+      
+      // Show resize tooltip with duration
+      setResizeTooltip({
+        show: true,
+        duration: caption.endTime - newStartTime,
+        x: event.clientX - rect.left
+      });
     } else if (dragType === 'resize-end') {
       const rawNewEndTime = dragStartTime + deltaTime;
       newEndTime = snapToSecond(Math.min(duration, Math.max(caption.startTime + 1, rawNewEndTime)));
+      
       onCaptionUpdate({
         ...caption,
         endTime: newEndTime
       });
       
-      // Show resize tooltip
+      // Show resize tooltip with duration
       setResizeTooltip({
         show: true,
         duration: newEndTime - caption.startTime,
@@ -282,38 +243,23 @@ export const Timeline = ({
                     minWidth: '60px'
                   }}
                   onMouseDown={(e) => handleCaptionMouseDown(caption.id, e, 'move')}
-                  onDoubleClick={(e) => handleCaptionDoubleClick(caption.id, e)}
                 >
-                  {editingCaption === caption.id ? (
-                    <input
-                      ref={editInputRef}
-                      type="text"
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                      onKeyDown={handleEditKeyDown}
-                      onBlur={handleSaveEdit}
-                      className="w-full bg-transparent text-white text-xs font-medium outline-none border-none"
-                      style={{ minWidth: '40px' }}
-                    />
-                  ) : (
-                    <span className="text-white text-xs truncate font-medium flex-1 pointer-events-none">
-                      {caption.text}
-                    </span>
-                  )}
+                  {/* Display-only text - no editing */}
+                  <span className="text-white text-xs truncate font-medium flex-1 pointer-events-none select-none">
+                    {caption.text}
+                  </span>
                   
-                  {/* Resize handles - hide when editing */}
-                  {editingCaption !== caption.id && (
-                    <>
-                      <div 
-                        className="absolute left-0 top-0 bottom-0 w-2 bg-blue-300 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity rounded-l" 
-                        onMouseDown={(e) => handleCaptionMouseDown(caption.id, e, 'resize-start')}
-                      />
-                      <div 
-                        className="absolute right-0 top-0 bottom-0 w-2 bg-blue-300 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity rounded-r" 
-                        onMouseDown={(e) => handleCaptionMouseDown(caption.id, e, 'resize-end')}
-                      />
-                    </>
-                  )}
+                  {/* Resize handles - always visible on hover */}
+                  <div 
+                    className="absolute left-0 top-0 bottom-0 w-2 bg-blue-300/70 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity rounded-l hover:bg-blue-300" 
+                    onMouseDown={(e) => handleCaptionMouseDown(caption.id, e, 'resize-start')}
+                    title="Drag to adjust start time"
+                  />
+                  <div 
+                    className="absolute right-0 top-0 bottom-0 w-2 bg-blue-300/70 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity rounded-r hover:bg-blue-300" 
+                    onMouseDown={(e) => handleCaptionMouseDown(caption.id, e, 'resize-end')}
+                    title="Drag to adjust end time"
+                  />
                 </div>
               ))}
             </div>
@@ -339,7 +285,7 @@ export const Timeline = ({
             {/* Resize Tooltip */}
             {resizeTooltip?.show && (
               <div
-                className="absolute top-16 bg-black/80 text-white text-xs px-2 py-1 rounded pointer-events-none z-20"
+                className="absolute top-16 bg-black/90 text-white text-xs px-2 py-1 rounded pointer-events-none z-20 font-mono"
                 style={{ left: `${resizeTooltip.x}px`, transform: 'translateX(-50%)' }}
               >
                 Duration: {resizeTooltip.duration.toFixed(1)}s
