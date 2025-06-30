@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 
 interface Caption {
@@ -36,9 +35,18 @@ export const Timeline = ({
   const timelineWidth = duration * PIXELS_PER_SECOND;
 
   const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = (seconds % 60).toFixed(2);
-    return `${String(mins).padStart(2, '0')}:${String(parseFloat(secs)).padStart(5, '0').padEnd(5, '0')}`;
+    const totalSeconds = Math.floor(seconds);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  const formatTimeDetailed = (seconds: number): string => {
+    const totalSeconds = Math.floor(seconds);
+    const milliseconds = Math.floor((seconds % 1) * 100);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(milliseconds).padStart(2, '0')}`;
   };
 
   const snapToSecond = (time: number): number => {
@@ -168,7 +176,7 @@ export const Timeline = ({
                   className="absolute top-0 border-l border-slate-500/50"
                   style={{ left: `${time * PIXELS_PER_SECOND}px` }}
                 >
-                  <div className="text-xs text-slate-300 ml-1 mt-0.5">
+                  <div className="text-xs text-slate-300 ml-1 mt-0.5 font-mono">
                     {formatTime(time)}
                   </div>
                 </div>

@@ -53,9 +53,11 @@ export const CaptionSettings = ({
   }, [activeTrack, onTrackNameChange]);
 
   const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = (seconds % 60).toFixed(2);
-    return `${String(mins).padStart(2, '0')}:${String(parseFloat(secs)).padStart(5, '0').padEnd(5, '0')}`;
+    const totalSeconds = Math.floor(seconds);
+    const milliseconds = Math.floor((seconds % 1) * 100);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(milliseconds).padStart(2, '0')}`;
   };
 
   const handleCreateTrack = () => {
@@ -294,8 +296,8 @@ export const CaptionSettings = ({
           <div className="max-h-32 overflow-y-auto space-y-1">
             {activeTrack.captions.map((caption) => (
               <div key={caption.id} className="bg-slate-700/30 rounded p-2 text-sm">
-                <div className="text-slate-400 text-xs mb-1">
-                  {formatTime(caption.startTime)} - {formatTime(caption.endTime)}
+                <div className="text-slate-400 text-xs mb-1 font-mono">
+                  {formatTime(caption.startTime)} – {formatTime(caption.endTime)}
                 </div>
                 <div className="text-white">{caption.text}</div>
               </div>
