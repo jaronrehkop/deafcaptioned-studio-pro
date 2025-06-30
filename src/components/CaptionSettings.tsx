@@ -52,6 +52,12 @@ export const CaptionSettings = ({
     }
   }, [activeTrack, onTrackNameChange]);
 
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = (seconds % 60).toFixed(2);
+    return `${String(mins).padStart(2, '0')}:${String(parseFloat(secs)).padStart(5, '0').padEnd(5, '0')}`;
+  };
+
   const handleCreateTrack = () => {
     if (trackName.trim()) {
       const newTrack: CaptionTrack = {
@@ -70,14 +76,14 @@ export const CaptionSettings = ({
     const sorted = [...captions].sort((a, b) => a.startTime - b.startTime);
     
     // Try to place at preferred time first
-    let proposedStart = preferredStart;
+    let proposedStart = Math.round(preferredStart);
     let proposedEnd = proposedStart + duration;
     
     // Check for overlaps and find next available slot
     for (const caption of sorted) {
       if (proposedStart < caption.endTime && proposedEnd > caption.startTime) {
         // Overlap detected, move to after this caption
-        proposedStart = caption.endTime;
+        proposedStart = Math.round(caption.endTime);
         proposedEnd = proposedStart + duration;
       }
     }
@@ -123,7 +129,7 @@ export const CaptionSettings = ({
   const handleImportScript = () => {
     if (scriptText.trim() && activeTrack) {
       const lines = scriptText.split('\n').filter(line => line.trim());
-      let currentStartTime = currentTime;
+      let currentStartTime = Math.round(currentTime);
       
       const newCaptions = lines.map((line, index) => {
         const duration = 3;
@@ -146,12 +152,6 @@ export const CaptionSettings = ({
       setActiveTrack(updatedTrack);
       setScriptText('');
     }
-  };
-
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
   if (!activeTrack) {

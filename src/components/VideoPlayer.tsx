@@ -3,13 +3,26 @@ import React, { useState, useRef } from 'react';
 import { Button } from './ui/button';
 import { VideoIcon, Upload, Play, Pause } from 'lucide-react';
 
+interface Caption {
+  id: string;
+  text: string;
+  startTime: number;
+  endTime: number;
+}
+
 interface VideoPlayerProps {
   onVideoLoad?: (duration: number) => void;
   onTimeUpdate?: (currentTime: number) => void;
   currentTime?: number;
+  captions?: Caption[];
 }
 
-export const VideoPlayer = ({ onVideoLoad, onTimeUpdate, currentTime }: VideoPlayerProps) => {
+export const VideoPlayer = ({ 
+  onVideoLoad, 
+  onTimeUpdate, 
+  currentTime, 
+  captions = [] 
+}: VideoPlayerProps) => {
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -52,9 +65,26 @@ export const VideoPlayer = ({ onVideoLoad, onTimeUpdate, currentTime }: VideoPla
   // Sync video with external currentTime updates
   React.useEffect(() => {
     if (videoRef.current && currentTime !== undefined) {
-      videoRef.current.currentTime = currentTime;
+      const video = videoRef.current;
+      const timeDiff = Math.abs(video.currentTime - currentTime);
+      
+      // Only seek if there's a significant difference to avoid constant seeking
+      if (timeDiff > 0.5) {
+        video.currentTime = currentTime;
+      }
     }
   }, [currentTime]);
+
+  // Get current active caption
+  const getCurrentCaption = (): Caption | null => {
+    if (!currentTime) return null;
+    
+    return captions.find(caption => 
+      currentTime >= caption.startTime && currentTime <= caption.endTime
+    ) || null;
+  };
+
+  const activeCaption = getCurrentCaption();
 
   return (
     <div className="relative">
@@ -91,6 +121,17 @@ export const VideoPlayer = ({ onVideoLoad, onTimeUpdate, currentTime }: VideoPla
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
           />
+          
+          {/* Caption Overlay */}
+          {activeCaption && (
+            <div className="absolute bottom-16 left-4 right-4 flex justify-center">
+              <div className="bg-black/80 text-white px-4 py-2 rounded-lg text-center max-w-2xl">
+                <p className="text-lg font-medium leading-tight">
+                  {activeCaption.text}
+                </p>
+              </div>
+            </div>
+          )}
           
           {/* Video Controls Overlay */}
           <div className="absolute bottom-4 left-4 right-4 flex items-center space-x-4">

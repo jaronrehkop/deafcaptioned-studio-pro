@@ -30,14 +30,19 @@ export const Timeline = ({
   const [dragType, setDragType] = useState<'move' | 'resize-start' | 'resize-end' | null>(null);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartTime, setDragStartTime] = useState(0);
+  const [resizeTooltip, setResizeTooltip] = useState<{ show: boolean; duration: number; x: number } | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const PIXELS_PER_SECOND = 50;
   const timelineWidth = duration * PIXELS_PER_SECOND;
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    const secs = (seconds % 60).toFixed(2);
+    return `${String(mins).padStart(2, '0')}:${String(parseFloat(secs)).padStart(5, '0').padEnd(5, '0')}`;
+  };
+
+  const snapToSecond = (time: number): number => {
+    return Math.round(time);
   };
 
   const handleTimelineClick = (event: React.MouseEvent) => {
@@ -46,8 +51,8 @@ export const Timeline = ({
     const rect = timelineRef.current.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
     const newTime = (clickX / PIXELS_PER_SECOND);
-    const clampedTime = Math.max(0, Math.min(duration, newTime));
-    onTimeChange(clampedTime);
+    const snappedTime = snapToSecond(Math.max(0, Math.min(duration, newTime)));
+    onTimeChange(snappedTime);
   };
 
   const handleCaptionMouseDown = (captionId: string, event: React.MouseEvent, type: 'move' | 'resize-start' | 'resize-end') => {
@@ -67,7 +72,6 @@ export const Timeline = ({
     if (!isDragging || !draggedCaption || !timelineRef.current || !dragType) return;
     
     const rect = timelineRef.current.getBoundingClientRect();
-    const currentX = event.clientX - rect.left;
     const deltaX = event.clientX - dragStartX;
     const deltaTime = deltaX / PIXELS_PER_SECOND;
     
@@ -78,8 +82,11 @@ export const Timeline = ({
     let newEndTime = caption.endTime;
 
     if (dragType === 'move') {
-      newStartTime = Math.max(0, caption.startTime + deltaTime);
-      newEndTime = Math.min(duration, caption.endTime + deltaTime);
+      const rawNewStartTime = caption.startTime + deltaTime;
+      const rawNewEndTime = caption.endTime + deltaTime;
+      
+      newStartTime = snapToSecond(Math.max(0, rawNewStartTime));
+      newEndTime = snapToSecond(Math.min(duration, rawNewEndTime));
       
       // Prevent overlap with other captions
       const otherCaptions = captions.filter(c => c.id !== draggedCaption);
@@ -95,16 +102,25 @@ export const Timeline = ({
         });
       }
     } else if (dragType === 'resize-start') {
-      newStartTime = Math.max(0, Math.min(caption.endTime - 0.5, dragStartTime + deltaTime));
+      const rawNewStartTime = dragStartTime + deltaTime;
+      newStartTime = snapToSecond(Math.max(0, Math.min(caption.endTime - 1, rawNewStartTime)));
       onCaptionUpdate({
         ...caption,
         startTime: newStartTime
       });
     } else if (dragType === 'resize-end') {
-      newEndTime = Math.min(duration, Math.max(caption.startTime + 0.5, dragStartTime + deltaTime));
+      const rawNewEndTime = dragStartTime + deltaTime;
+      newEndTime = snapToSecond(Math.min(duration, Math.max(caption.startTime + 1, rawNewEndTime)));
       onCaptionUpdate({
         ...caption,
         endTime: newEndTime
+      });
+      
+      // Show resize tooltip
+      setResizeTooltip({
+        show: true,
+        duration: newEndTime - caption.startTime,
+        x: event.clientX - rect.left
       });
     }
   };
@@ -113,13 +129,12 @@ export const Timeline = ({
     setIsDragging(false);
     setDraggedCaption(null);
     setDragType(null);
+    setResizeTooltip(null);
   };
 
-  // Generate time markers
+  // Generate time markers at 1-second intervals
   const timeMarkers = [];
-  const markerInterval = duration > 60 ? 10 : 5;
-  
-  for (let i = 0; i <= duration; i += markerInterval) {
+  for (let i = 0; i <= Math.ceil(duration); i++) {
     timeMarkers.push(i);
   }
 
@@ -198,7 +213,7 @@ export const Timeline = ({
               <div className="absolute -top-1 -left-1 w-3 h-3 bg-red-500 rotate-45 transform origin-center" />
             </div>
 
-            {/* Snap lines (visual feedback) */}
+            {/* Snap lines (1-second intervals) */}
             {timeMarkers.map((time) => (
               <div
                 key={`snap-${time}`}
@@ -206,6 +221,16 @@ export const Timeline = ({
                 style={{ left: `${time * PIXELS_PER_SECOND}px` }}
               />
             ))}
+
+            {/* Resize Tooltip */}
+            {resizeTooltip?.show && (
+              <div
+                className="absolute top-16 bg-black/80 text-white text-xs px-2 py-1 rounded pointer-events-none z-20"
+                style={{ left: `${resizeTooltip.x}px`, transform: 'translateX(-50%)' }}
+              >
+                Duration: {resizeTooltip.duration.toFixed(1)}s
+              </div>
+            )}
           </div>
         </div>
       </div>

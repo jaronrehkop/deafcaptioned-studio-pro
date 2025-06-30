@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { WorkspacePanel } from '../WorkspacePanel';
 import { VideoIcon, ClipboardIcon, MessageSquareIcon, ListIcon, SettingsIcon } from 'lucide-react';
@@ -57,6 +56,7 @@ export const EditorDashboard = () => {
           onVideoLoad={handleVideoLoad}
           onTimeUpdate={handleTimeUpdate}
           currentTime={currentTime}
+          captions={captions}
         />
       )
     },
