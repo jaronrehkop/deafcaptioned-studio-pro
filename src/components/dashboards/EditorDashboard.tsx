@@ -3,14 +3,7 @@ import { WorkspacePanel } from '../WorkspacePanel';
 import { VideoIcon, ClipboardIcon, MessageSquareIcon, ListIcon, SettingsIcon } from 'lucide-react';
 import { CaptionSettings } from '../CaptionSettings';
 import { VideoPlayer } from '../VideoPlayer';
-import { Timeline } from '../Timeline';
-
-interface Caption {
-  id: string;
-  text: string;
-  startTime: number;
-  endTime: number;
-}
+import { Timeline, Caption } from '../Timeline';
 
 export const EditorDashboard = () => {
   const [videoDuration, setVideoDuration] = useState(0);
