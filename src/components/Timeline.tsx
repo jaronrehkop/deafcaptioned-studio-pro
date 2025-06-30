@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 
 interface Caption {
@@ -30,7 +31,12 @@ export const Timeline = ({
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartTime, setDragStartTime] = useState(0);
   const [resizeTooltip, setResizeTooltip] = useState<{ show: boolean; duration: number; x: number } | null>(null);
+  const [editingCaption, setEditingCaption] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [isDraggingScrubber, setIsDraggingScrubber] = useState(false);
+  const [scrubberTooltip, setScrubberTooltip] = useState<{ show: boolean; time: number; x: number } | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
   const PIXELS_PER_SECOND = 50;
   const timelineWidth = duration * PIXELS_PER_SECOND;
 
@@ -53,8 +59,16 @@ export const Timeline = ({
     return Math.round(time);
   };
 
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingCaption && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingCaption]);
+
   const handleTimelineClick = (event: React.MouseEvent) => {
-    if (!timelineRef.current || draggedCaption) return;
+    if (!timelineRef.current || draggedCaption || editingCaption) return;
     
     const rect = timelineRef.current.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
@@ -63,8 +77,24 @@ export const Timeline = ({
     onTimeChange(snappedTime);
   };
 
+  const handleScrubberMouseDown = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    setIsDraggingScrubber(true);
+    
+    if (timelineRef.current) {
+      const rect = timelineRef.current.getBoundingClientRect();
+      setScrubberTooltip({
+        show: true,
+        time: currentTime,
+        x: event.clientX - rect.left
+      });
+    }
+  };
+
   const handleCaptionMouseDown = (captionId: string, event: React.MouseEvent, type: 'move' | 'resize-start' | 'resize-end') => {
     event.stopPropagation();
+    if (editingCaption) return; // Don't drag while editing
+    
     setDraggedCaption(captionId);
     setDragType(type);
     setIsDragging(true);
@@ -76,10 +106,65 @@ export const Timeline = ({
     }
   };
 
+  const handleCaptionDoubleClick = (captionId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const caption = captions.find(c => c.id === captionId);
+    if (caption && !isDragging) {
+      setEditingCaption(captionId);
+      setEditText(caption.text);
+    }
+  };
+
+  const handleEditKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter') {
+      handleSaveEdit();
+    } else if (event.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
+
+  const handleSaveEdit = () => {
+    if (editingCaption && editText.trim()) {
+      const caption = captions.find(c => c.id === editingCaption);
+      if (caption) {
+        onCaptionUpdate({
+          ...caption,
+          text: editText.trim()
+        });
+      }
+    }
+    setEditingCaption(null);
+    setEditText('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCaption(null);
+    setEditText('');
+  };
+
   const handleMouseMove = (event: React.MouseEvent) => {
-    if (!isDragging || !draggedCaption || !timelineRef.current || !dragType) return;
+    if (!timelineRef.current) return;
     
     const rect = timelineRef.current.getBoundingClientRect();
+    
+    // Handle scrubber dragging
+    if (isDraggingScrubber) {
+      const clickX = event.clientX - rect.left;
+      const newTime = Math.max(0, Math.min(duration, clickX / PIXELS_PER_SECOND));
+      const snappedTime = snapToSecond(newTime);
+      
+      onTimeChange(snappedTime);
+      setScrubberTooltip({
+        show: true,
+        time: snappedTime,
+        x: event.clientX - rect.left
+      });
+      return;
+    }
+
+    // Handle caption dragging
+    if (!isDragging || !draggedCaption || !dragType) return;
+    
     const deltaX = event.clientX - dragStartX;
     const deltaTime = deltaX / PIXELS_PER_SECOND;
     
@@ -138,6 +223,8 @@ export const Timeline = ({
     setDraggedCaption(null);
     setDragType(null);
     setResizeTooltip(null);
+    setIsDraggingScrubber(false);
+    setScrubberTooltip(null);
   };
 
   // Generate time markers at 1-second intervals
@@ -195,30 +282,49 @@ export const Timeline = ({
                     minWidth: '60px'
                   }}
                   onMouseDown={(e) => handleCaptionMouseDown(caption.id, e, 'move')}
+                  onDoubleClick={(e) => handleCaptionDoubleClick(caption.id, e)}
                 >
-                  <span className="text-white text-xs truncate font-medium flex-1">
-                    {caption.text}
-                  </span>
+                  {editingCaption === caption.id ? (
+                    <input
+                      ref={editInputRef}
+                      type="text"
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      onKeyDown={handleEditKeyDown}
+                      onBlur={handleSaveEdit}
+                      className="w-full bg-transparent text-white text-xs font-medium outline-none border-none"
+                      style={{ minWidth: '40px' }}
+                    />
+                  ) : (
+                    <span className="text-white text-xs truncate font-medium flex-1 pointer-events-none">
+                      {caption.text}
+                    </span>
+                  )}
                   
-                  {/* Resize handles */}
-                  <div 
-                    className="absolute left-0 top-0 bottom-0 w-2 bg-blue-300 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity rounded-l" 
-                    onMouseDown={(e) => handleCaptionMouseDown(caption.id, e, 'resize-start')}
-                  />
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-2 bg-blue-300 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity rounded-r" 
-                    onMouseDown={(e) => handleCaptionMouseDown(caption.id, e, 'resize-end')}
-                  />
+                  {/* Resize handles - hide when editing */}
+                  {editingCaption !== caption.id && (
+                    <>
+                      <div 
+                        className="absolute left-0 top-0 bottom-0 w-2 bg-blue-300 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity rounded-l" 
+                        onMouseDown={(e) => handleCaptionMouseDown(caption.id, e, 'resize-start')}
+                      />
+                      <div 
+                        className="absolute right-0 top-0 bottom-0 w-2 bg-blue-300 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity rounded-r" 
+                        onMouseDown={(e) => handleCaptionMouseDown(caption.id, e, 'resize-end')}
+                      />
+                    </>
+                  )}
                 </div>
               ))}
             </div>
 
             {/* Playhead */}
             <div
-              className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 pointer-events-none"
+              className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10 cursor-grab active:cursor-grabbing hover:w-1 transition-all"
               style={{ left: `${currentTime * PIXELS_PER_SECOND}px` }}
+              onMouseDown={handleScrubberMouseDown}
             >
-              <div className="absolute -top-1 -left-1 w-3 h-3 bg-red-500 rotate-45 transform origin-center" />
+              <div className="absolute -top-1 -left-1 w-3 h-3 bg-red-500 rotate-45 transform origin-center cursor-grab active:cursor-grabbing" />
             </div>
 
             {/* Snap lines (1-second intervals) */}
@@ -237,6 +343,16 @@ export const Timeline = ({
                 style={{ left: `${resizeTooltip.x}px`, transform: 'translateX(-50%)' }}
               >
                 Duration: {resizeTooltip.duration.toFixed(1)}s
+              </div>
+            )}
+
+            {/* Scrubber Tooltip */}
+            {scrubberTooltip?.show && (
+              <div
+                className="absolute -top-8 bg-black/80 text-white text-xs px-2 py-1 rounded pointer-events-none z-20 font-mono"
+                style={{ left: `${scrubberTooltip.x}px`, transform: 'translateX(-50%)' }}
+              >
+                {formatTimeDetailed(scrubberTooltip.time)}
               </div>
             )}
           </div>
