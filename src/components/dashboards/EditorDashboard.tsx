@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { WorkspacePanel } from '../WorkspacePanel';
 import { VideoIcon, ClipboardIcon, MessageSquareIcon, ListIcon, SettingsIcon } from 'lucide-react';
 import { CaptionSettings } from '../CaptionSettings';
@@ -23,13 +23,14 @@ export const EditorDashboard = () => {
     setCurrentTime(time);
   };
 
-  const handleCaptionUpdate = (updatedCaption: Caption) => {
+  // Use useCallback to ensure stable reference for real-time updates
+  const handleCaptionUpdate = useCallback((updatedCaption: Caption) => {
     setCaptions(prev => 
       prev.map(caption => 
         caption.id === updatedCaption.id ? updatedCaption : caption
       )
     );
-  };
+  }, []);
 
   const handleCaptionsChange = (newCaptions: Caption[]) => {
     setCaptions(newCaptions);

@@ -100,6 +100,7 @@ export const Timeline = ({
 
     let newStartTime = caption.startTime;
     let newEndTime = caption.endTime;
+    let shouldUpdate = false;
 
     if (dragType === 'move') {
       const rawNewStartTime = caption.startTime + deltaTime;
@@ -115,20 +116,12 @@ export const Timeline = ({
       );
       
       if (!wouldOverlap) {
-        onCaptionUpdate({
-          ...caption,
-          startTime: newStartTime,
-          endTime: newEndTime
-        });
+        shouldUpdate = true;
       }
     } else if (dragType === 'resize-start') {
       const rawNewStartTime = dragStartTime + deltaTime;
       newStartTime = snapToSecond(Math.max(0, Math.min(caption.endTime - 1, rawNewStartTime)));
-      
-      onCaptionUpdate({
-        ...caption,
-        startTime: newStartTime
-      });
+      shouldUpdate = true;
       
       // Show resize tooltip with duration
       setResizeTooltip({
@@ -139,11 +132,7 @@ export const Timeline = ({
     } else if (dragType === 'resize-end') {
       const rawNewEndTime = dragStartTime + deltaTime;
       newEndTime = snapToSecond(Math.min(duration, Math.max(caption.startTime + 1, rawNewEndTime)));
-      
-      onCaptionUpdate({
-        ...caption,
-        endTime: newEndTime
-      });
+      shouldUpdate = true;
       
       // Show resize tooltip with duration
       setResizeTooltip({
@@ -151,6 +140,18 @@ export const Timeline = ({
         duration: newEndTime - caption.startTime,
         x: event.clientX - rect.left
       });
+    }
+
+    // Immediately update the caption for real-time sync
+    if (shouldUpdate) {
+      const updatedCaption = {
+        ...caption,
+        startTime: newStartTime,
+        endTime: newEndTime
+      };
+      
+      // Call onCaptionUpdate immediately for real-time updates
+      onCaptionUpdate(updatedCaption);
     }
   };
 

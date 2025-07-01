@@ -289,13 +289,15 @@ export const CaptionSettings = ({
         </div>
       </div>
 
-      {/* Caption List */}
+      {/* Caption List - Real-time updates */}
       {activeTrack.captions.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-white font-semibold text-sm">Caption List</h4>
           <div className="max-h-32 overflow-y-auto space-y-1">
-            {activeTrack.captions.map((caption) => (
-              <div key={caption.id} className="bg-slate-700/30 rounded p-2 text-sm">
+            {activeTrack.captions
+              .sort((a, b) => a.startTime - b.startTime)
+              .map((caption) => (
+              <div key={`${caption.id}-${caption.startTime}-${caption.endTime}`} className="bg-slate-700/30 rounded p-2 text-sm">
                 <div className="text-slate-400 text-xs mb-1 font-mono">
                   {formatTime(caption.startTime)} – {formatTime(caption.endTime)}
                 </div>
