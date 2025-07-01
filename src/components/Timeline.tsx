@@ -21,6 +21,7 @@ export const Timeline = ({
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartTime, setDragStartTime] = useState(0);
   const [resizeTooltip, setResizeTooltip] = useState<TooltipState | null>(null);
+  const [moveTooltip, setMoveTooltip] = useState<TooltipState | null>(null);
   const [isDraggingScrubber, setIsDraggingScrubber] = useState(false);
   const [scrubberTooltip, setScrubberTooltip] = useState<TooltipState | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -117,6 +118,14 @@ export const Timeline = ({
       
       if (!wouldOverlap) {
         shouldUpdate = true;
+        
+        // Show move tooltip with start and end times
+        setMoveTooltip({
+          show: true,
+          startTime: newStartTime,
+          endTime: newEndTime,
+          x: event.clientX - rect.left
+        });
       }
     } else if (dragType === 'resize-start') {
       const rawNewStartTime = dragStartTime + deltaTime;
@@ -160,6 +169,7 @@ export const Timeline = ({
     setDraggedCaption(null);
     setDragType(null);
     setResizeTooltip(null);
+    setMoveTooltip(null);
     setIsDraggingScrubber(false);
     setScrubberTooltip(null);
   };
@@ -212,7 +222,11 @@ export const Timeline = ({
             <SnapLines duration={duration} pixelsPerSecond={PIXELS_PER_SECOND} />
 
             {/* Tooltips */}
-            <Tooltips resizeTooltip={resizeTooltip} scrubberTooltip={scrubberTooltip} />
+            <Tooltips 
+              resizeTooltip={resizeTooltip} 
+              scrubberTooltip={scrubberTooltip}
+              moveTooltip={moveTooltip}
+            />
           </div>
         </div>
       </div>

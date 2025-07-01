@@ -19,5 +19,7 @@ export interface TooltipState {
   show: boolean;
   duration?: number;
   time?: number;
+  startTime?: number;
+  endTime?: number;
   x: number;
 }
